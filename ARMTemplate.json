@@ -1,0 +1,126 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+    "StorageAccountName":{
+        "type": "string"
+    },
+    "Blob_Container_Name":{
+        "type": "string"
+    },
+    "storageAccountType": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_ZRS"
+      ]
+    },
+    "Storage_Tier_Hot_or_Cool":{
+        "type": "string",
+        "defaultValue": "Cool",
+        "allowedValues": [
+        "Cool",
+        "Hot"
+      ]
+    },
+    "Allow_Public_Blob_Access":{
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+        true,
+        false
+        ]
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "Microsoft_Customer_Attribution_GUID":{
+        "type": "string",
+        "defaultValue":"pid-6e830438-61ec-454c-b6eb-ba7a7264b2ba",
+        "allowedValues":[
+            "pid-6e830438-61ec-454c-b6eb-ba7a7264b2ba"
+        ]
+    }
+  },
+    "variables": {
+        "StorAcctName":"[toLower(parameters('StorageAccountName'))]",
+        "Location" : "[resourceGroup().location]",
+        "ContainerName":"[concat(parameters('StorageAccountName'), '/default/',parameters('Blob_Container_Name'))]",
+    "Empty":[]
+    },
+    
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2021-08-01",
+            "name": "[variables('StorAcctName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[parameters('storageAccountType')]",
+                "tier": "Standard"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "defaultToOAuthAuthentication": false,
+                "allowCrossTenantReplication": true,
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": "[parameters('Allow_Public_Blob_Access')]",
+                "allowSharedKeyAccess": true,
+                "supportsHttpsTrafficOnly": true,
+                "encryption": {
+                    "requireInfrastructureEncryption": true,
+                    "services": {
+                        "file": {
+                            "keyType": "Account",
+                            "enabled": true
+                        },
+                        "blob": {
+                            "keyType": "Account",
+                            "enabled": true
+                        }
+                    },
+                    "keySource": "Microsoft.Storage"
+                },
+                "accessTier": "[parameters('Storage_Tier_Hot_or_Cool')]"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+            "apiVersion": "2021-08-01",
+            "name": "[variables('ContainerName')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('StorageAccountName'))]"
+            ],
+            "properties": {
+                "immutableStorageWithVersioning": {
+                    "enabled": false
+                },
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "None"
+            }
+        },
+        {
+         "apiVersion": "2020-06-01",
+         "name": "[parameters('Microsoft_Customer_Attribution_GUID')]",
+         "type": "Microsoft.Resources/deployments",
+         "properties": {
+         "mode": "Incremental",
+         "parameters":{
+         },
+            "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "resources": []
+                }
+            }
+        }
+        
+    ]
+}
